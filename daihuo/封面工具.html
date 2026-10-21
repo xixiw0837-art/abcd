@@ -1,0 +1,325 @@
+<title>小红书封面工坊</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+/* 布局：左侧是参数面板，右侧是3:4封面实时预览；手机上改成上下排列 */
+:root {
+  --bg: #eef1f0;
+  --panel: #ffffff;
+  --fg: #1d2523;
+  --muted: #5d6b67;
+  --line: #d5dcd9;
+  --accent: #e2453a;
+  --accent-fg: #ffffff;
+  --chip: #f4f6f5;
+  --font: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "WenQuanYi Zen Hei", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151a19; --panel: #1e2523; --fg: #e8eeec; --muted: #9aa8a4;
+    --line: #34403d; --accent: #f05b4f; --accent-fg: #ffffff; --chip: #262f2d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151a19; --panel: #1e2523; --fg: #e8eeec; --muted: #9aa8a4;
+  --line: #34403d; --accent: #f05b4f; --accent-fg: #ffffff; --chip: #262f2d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+header h1 { font-size: 26px; font-weight: 900; margin: 0; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 62ch; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 16px; min-width: 0; }
+.label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .08em; margin-bottom: 8px; display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets button, .seg button {
+  font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--chip); color: var(--fg);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.presets button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .grid2 { grid-template-columns: 1fr; } }
+input[type="text"] {
+  width: 100%; font: inherit; font-size: 15px; padding: 9px 11px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+input[type="file"] { font: inherit; font-size: 13px; color: var(--muted); max-width: 100%; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatches { display: flex; gap: 10px; }
+.swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatches button[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--panel) inset; }
+.hint { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
+.preview { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: grid; gap: 12px; min-width: 0; }
+canvas { width: 100%; max-width: 100%; aspect-ratio: 3 / 4; height: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); display: block; }
+.primary { font: inherit; font-weight: 700; font-size: 16px; padding: 12px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+.out { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.out img { width: 100%; border-radius: 8px; }
+.photo-row { display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>小红书封面工坊</h1>
+    <p>选一篇笔记，上传你自己拍的照片，就能生成 1080×1440 的封面。10篇笔记的文字已经填好，不传照片也能生成纯文字封面。</p>
+  </header>
+
+  <div class="main">
+    <section class="panel" aria-label="封面设置">
+      <div>
+        <span class="label">笔记</span>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div>
+        <span class="label">版式</span>
+        <div class="seg" id="layouts">
+          <button type="button" data-layout="big">大字标题</button>
+          <button type="button" data-layout="compare">改造前后对比</button>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div><label class="label" for="line1">第一行</label><input type="text" id="line1"></div>
+        <div><label class="label" for="line2">第二行</label><input type="text" id="line2"></div>
+        <div><label class="label" for="hl">黄色高亮的词</label><input type="text" id="hl"></div>
+        <div><label class="label" for="tag">红色标签</label><input type="text" id="tag"></div>
+        <div><label class="label" for="who">账号名</label><input type="text" id="who" value="@一只收纳控"></div>
+        <div>
+          <span class="label">底色（没传照片时用）</span>
+          <div class="swatches" id="swatches"></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="photo-row">
+          <label class="label" for="photo1" id="photo1-label">照片</label>
+          <input type="file" id="photo1" accept="image/*">
+        </div>
+        <div class="photo-row" id="photo2-row">
+          <label class="label" for="photo2">改造后照片</label>
+          <input type="file" id="photo2" accept="image/*">
+        </div>
+      </div>
+      <p class="hint">照片会自动裁成合适的比例，只在你的浏览器里处理，不会上传。对比版式请上传两张同角度拍的照片，效果最好。</p>
+    </section>
+
+    <section class="preview" aria-label="预览">
+      <canvas id="cv" width="1080" height="1440" aria-label="封面预览"></canvas>
+      <button type="button" class="primary" id="export">生成图片</button>
+      <div class="out" id="out" hidden>
+        <p class="hint">手机上长按图片保存，电脑上右键选择“图片另存为”。</p>
+        <img id="outimg" alt="生成的封面">
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const PRESETS = [
+  { name: "1 冰箱收纳", layout: "compare", line1: "冰箱改造", line2: "多塞一倍东西", hl: "一倍", tag: "收纳盒实测" },
+  { name: "2 免打孔置物架", layout: "big", line1: "房东不让打孔", line2: "怎么办？", hl: "打孔", tag: "租房党必看" },
+  { name: "3 沥水篮", layout: "big", line1: "厨房最值得买", line2: "的小东西", hl: "最值得", tag: "几十块搞定" },
+  { name: "4 懒人抹布", layout: "big", line1: "抹布到底", line2: "多久换一次？", hl: "多久", tag: "劝你们看看" },
+  { name: "5 去污膏", layout: "big", line1: "网红去污膏", line2: "实测！", hl: "实测", tag: "不夸不吹" },
+  { name: "6 调料收纳", layout: "compare", line1: "做饭不再", line2: "手忙脚乱", hl: "手忙脚乱", tag: "灶台改造" },
+  { name: "7 硅藻泥地垫", layout: "big", line1: "倒一杯水", line2: "会怎样？", hl: "一杯水", tag: "浴室必备" },
+  { name: "8 衣柜收纳", layout: "compare", line1: "衣柜塞爆", line2: "变一目了然", hl: "一目了然", tag: "衣柜收纳" },
+  { name: "9 密封罐", layout: "big", line1: "告别", line2: "夹子袋", hl: "夹子袋", tag: "厨房颜值" },
+  { name: "10 挂钩", layout: "big", line1: "门后是", line2: "隐藏收纳位", hl: "隐藏收纳", tag: "小户型" }
+];
+const SWATCHES = [
+  { a: "#cfe3dc", b: "#b7d3c9" },
+  { a: "#f6dcc7", b: "#eec3a3" },
+  { a: "#d9e3f3", b: "#bccde9" },
+  { a: "#efe6b8", b: "#e3d58f" }
+];
+const FONT = '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", "WenQuanYi Zen Hei", sans-serif';
+const W = 1080, H = 1440;
+const INK = "#16201d", MARK = "#ffe14d", RED = "#e2453a";
+
+const state = { preset: 0, layout: "big", swatch: 0, img1: null, img2: null };
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+
+function applyPreset(i) {
+  const p = PRESETS[i];
+  state.preset = i; state.layout = p.layout;
+  $("line1").value = p.line1; $("line2").value = p.line2;
+  $("hl").value = p.hl; $("tag").value = p.tag;
+  state.swatch = i % SWATCHES.length;
+  syncButtons(); draw();
+}
+
+function syncButtons() {
+  document.querySelectorAll("#presets button").forEach((b, i) => b.setAttribute("aria-pressed", i === state.preset));
+  document.querySelectorAll("#layouts button").forEach(b => b.setAttribute("aria-pressed", b.dataset.layout === state.layout));
+  document.querySelectorAll("#swatches button").forEach((b, i) => b.setAttribute("aria-pressed", i === state.swatch));
+  const compare = state.layout === "compare";
+  $("photo2-row").hidden = !compare;
+  $("photo1-label").textContent = compare ? "改造前照片" : "照片";
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// 照片按"cover"方式填满区域；没有照片时画浅色瓷砖格底
+function fillArea(img, x, y, w, h, sw) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  if (img) {
+    const s = Math.max(w / img.width, h / img.height);
+    const iw = img.width * s, ih = img.height * s;
+    ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+  } else {
+    ctx.fillStyle = sw.a; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = sw.b; ctx.lineWidth = 6;
+    const step = 135;
+    for (let gx = x; gx <= x + w; gx += step) { ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + h); ctx.stroke(); }
+    for (let gy = y; gy <= y + h; gy += step) { ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + w, gy); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+function fitSize(lines, maxW, maxSize) {
+  let size = maxSize;
+  ctx.font = `900 ${size}px ${FONT}`;
+  const widest = Math.max(...lines.map(l => ctx.measureText(l).width), 1);
+  if (widest > maxW) size = Math.floor(size * maxW / widest);
+  return size;
+}
+
+// 画一行字，命中高亮词的部分先垫一条黄色马克笔
+function drawLine(text, cx, baseline, size, hl) {
+  ctx.font = `900 ${size}px ${FONT}`;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  const total = ctx.measureText(text).width;
+  const x0 = cx - total / 2;
+  const at = hl ? text.indexOf(hl) : -1;
+  if (at >= 0) {
+    const pre = ctx.measureText(text.slice(0, at)).width;
+    const hw = ctx.measureText(hl).width;
+    ctx.fillStyle = MARK;
+    ctx.fillRect(x0 + pre - size * 0.06, baseline - size * 0.42, hw + size * 0.12, size * 0.5);
+  }
+  ctx.fillStyle = INK;
+  ctx.fillText(text, x0, baseline);
+}
+
+function pill(text, cx, cy, size, bg, fg) {
+  ctx.font = `700 ${size}px ${FONT}`;
+  const w = ctx.measureText(text).width + size * 1.4, h = size * 1.7;
+  roundRect(cx - w / 2, cy - h / 2, w, h, h / 2);
+  ctx.fillStyle = bg; ctx.fill();
+  ctx.fillStyle = fg; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, cx, cy + size * 0.04);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
+function draw() {
+  const sw = SWATCHES[state.swatch];
+  const lines = [$("line1").value.trim(), $("line2").value.trim()].filter(Boolean);
+  const hl = $("hl").value.trim(), tag = $("tag").value.trim(), who = $("who").value.trim();
+  ctx.clearRect(0, 0, W, H);
+
+  if (state.layout === "big") {
+    fillArea(state.img1, 0, 0, W, H, sw);
+    const size = fitSize(lines.length ? lines : [" "], 860, 168);
+    const lh = size * 1.25;
+    const boxH = lh * Math.max(lines.length, 1) + 110;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.18)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+    roundRect(60, 90, W - 120, boxH, 36); ctx.fillStyle = "#ffffff"; ctx.fill();
+    ctx.restore();
+    lines.forEach((l, i) => drawLine(l, W / 2, 90 + 55 + lh * i + size * 0.95, size, hl));
+    if (tag) pill(tag, W / 2, 90 + boxH + 70, 52, RED, "#ffffff");
+  } else {
+    const half = H / 2;
+    fillArea(state.img1, 0, 0, W, half, sw);
+    fillArea(state.img2, 0, half, W, half, { a: sw.b, b: sw.a });
+    pill("改造前", 150, 90, 44, "rgba(22,32,29,.85)", "#ffffff");
+    pill("改造后", 150, H - 90, 44, RED, "#ffffff");
+    const size = fitSize(lines.length ? lines : [" "], 880, 120);
+    const lh = size * 1.22;
+    const bandH = lh * Math.max(lines.length, 1) + 70;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, half - bandH / 2, W, bandH);
+    lines.forEach((l, i) => drawLine(l, W / 2, half - bandH / 2 + 35 + lh * i + size * 0.95, size, hl));
+    if (tag) pill(tag, W - 70 - tag.length * 26, half - bandH / 2 - 10, 40, RED, "#ffffff");
+  }
+
+  if (who) {
+    ctx.font = `500 34px ${FONT}`;
+    ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+    const onPhoto = !!state.img1;
+    ctx.fillStyle = onPhoto ? "rgba(255,255,255,.92)" : "rgba(22,32,29,.6)";
+    ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = onPhoto ? 8 : 0;
+    ctx.fillText(who, W - 50, state.layout === "compare" ? 80 : H - 50);
+    ctx.shadowBlur = 0; ctx.textAlign = "left";
+  }
+}
+
+function loadPhoto(input, key) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const im = new Image();
+  im.onload = () => { state[key] = im; draw(); };
+  im.src = url;
+}
+
+function exportImage() {
+  draw();
+  $("outimg").src = cv.toDataURL("image/png");
+  $("out").hidden = false;
+  $("out").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// 供本地批量导出用：渲染第 i 篇的纯文字封面并返回 dataURL
+window.renderPreset = i => { state.img1 = null; state.img2 = null; applyPreset(i); return cv.toDataURL("image/png"); };
+
+PRESETS.forEach((p, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = p.name;
+  b.addEventListener("click", () => applyPreset(i));
+  $("presets").appendChild(b);
+});
+SWATCHES.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.style.background = s.a; b.setAttribute("aria-label", `底色 ${i + 1}`);
+  b.addEventListener("click", () => { state.swatch = i; syncButtons(); draw(); });
+  $("swatches").appendChild(b);
+});
+document.querySelectorAll("#layouts button").forEach(b =>
+  b.addEventListener("click", () => { state.layout = b.dataset.layout; syncButtons(); draw(); }));
+["line1", "line2", "hl", "tag", "who"].forEach(id => $(id).addEventListener("input", draw));
+$("photo1").addEventListener("change", e => loadPhoto(e.target, "img1"));
+$("photo2").addEventListener("change", e => loadPhoto(e.target, "img2"));
+$("export").addEventListener("click", exportImage);
+
+applyPreset(0);
+const allText = PRESETS.map(p => p.line1 + p.line2 + p.tag).join("") + "改造前后@一只收纳控";
+Promise.all([900, 700, 500].map(w => document.fonts.load(`${w} 100px "Noto Sans SC"`, allText)))
+  .catch(() => {})
+  .then(() => { window.fontsReady = true; draw(); });
+</script>
